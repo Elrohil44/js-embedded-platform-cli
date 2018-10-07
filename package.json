@@ -1,0 +1,19 @@
+{
+  "name": "js-embedded-platform-cli",
+  "version": "1.0.0",
+  "description": "Command line interface for JS embedded platform",
+  "repository": "git@github.com:Elrohil44/js-embedded-platform-cli.git",
+  "author": "elrohil <wieslaw.stanek@spinney.io>",
+  "license": "MIT",
+  "dependencies": {
+    "lwm2m": "^0.12.0"
+  },
+  "scripts": {
+    "start": "node ./src/index.js"
+  },
+  "devDependencies": {
+    "eslint": "^5.6.1",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.14.0"
+  }
+}
