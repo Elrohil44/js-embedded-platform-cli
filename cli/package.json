@@ -1,0 +1,14 @@
+{
+  "name": "cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com/Elrohil44/js-embedded-platform-cli",
+  "license": "MIT",
+  "firmware-repository": "https://github.com/srsly4/js-embedded-platform.git",
+  "dependencies": {
+    "minimist": "^1.2.0"
+  },
+  "bin": {
+    "js-embedded-platform": "index.js"
+  }
+}
