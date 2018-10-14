@@ -13,8 +13,6 @@ const UPLOAD_COMMAND = 'upload';
 const SOURCE_CODE_DIR = 'js-embedded-platform';
 
 function printUsage() {
-  console.log(project['firmware-repository']);
-  console.log(options);
   console.log([
     '',
     '  Usage: js-embedded-platform [command] [options]',
