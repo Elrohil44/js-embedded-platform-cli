@@ -1,5 +1,4 @@
 const dgram = require('dgram');
-const config = require('./config');
 const logger = require('./logger');
 
 const TAG = 'UDPSocket';
@@ -12,6 +11,7 @@ const LISTENERS = [
 
 class UDPSocket {
   constructor(options) {
+    this.options = options;
     this.socket = null;
 
     LISTENERS.forEach((listenerKey) => {
@@ -27,10 +27,7 @@ class UDPSocket {
   }
 
   static createSocket(options = {}) {
-    const udpSocket = new UDPSocket(options);
-    const socket = dgram.createSocket(Object.assign({ type: 'udp4' }, options));
-
-    return udpSocket.setSocket(socket);
+    return new UDPSocket(options);
   }
 
   setSocket(socket) {
@@ -39,16 +36,21 @@ class UDPSocket {
     socket.on('message', this.messageListener);
     socket.on('error', this.errorListener);
     socket.on('close', this.closeListener);
-    socket.on('listening', this.listeningListener);
 
     return this;
   }
 
-  async bind(port = config.LWM2M_LOCAL_DISCOVERY_PORT) {
+  bind(port) {
+    if (this.socket) {
+      this.socket.close();
+    }
+    if (this.reject) {
+      this.reject(new Error('Socket closed'));
+    }
     return new Promise((resolve, reject) => {
-      this.resolve = resolve;
       this.reject = reject;
-      this.socket.bind(port);
+      this.setSocket(dgram.createSocket(Object.assign({ type: 'udp4' }, this.options || {})));
+      this.socket.bind(port, () => this.listeningListener(resolve, reject));
     });
   }
 
@@ -72,16 +74,14 @@ class UDPSocket {
     }
   }
 
-  listeningListener() {
+  listeningListener(resolve) {
     logger.log(TAG, 'Socket listening');
     this.socket.setBroadcast(true);
     if (this.onListening) {
       this.onListening();
     }
-
-    if (this.resolve) {
-      this.resolve(this);
-      this.resolve = null;
+    if (resolve) {
+      resolve(this);
     }
   }
 
