@@ -1,5 +1,11 @@
 const dgram = require('dgram');
+const os = require('os');
 const logger = require('./logger');
+
+const INTERFACES = os.networkInterfaces();
+const INTERFACESv4 = Object.keys(INTERFACES)
+  .map(key => INTERFACES[key].find(netIf => netIf.family === 'IPv4'))
+  .filter(Boolean);
 
 const TAG = 'UDPSocket';
 const LISTENERS = [
@@ -12,7 +18,7 @@ const LISTENERS = [
 class UDPSocket {
   constructor(options) {
     this.options = options;
-    this.socket = null;
+    this.sockets = [];
 
     LISTENERS.forEach((listenerKey) => {
       if (typeof options[listenerKey] === 'function') {
@@ -24,72 +30,81 @@ class UDPSocket {
     this.errorListener = this.errorListener.bind(this);
     this.listeningListener = this.listeningListener.bind(this);
     this.closeListener = this.closeListener.bind(this);
+    this.setSockets = this.setSockets.bind(this);
   }
 
   static createSocket(options = {}) {
     return new UDPSocket(options);
   }
 
-  setSocket(socket) {
-    this.socket = socket;
+  setSockets(sockets) {
+    this.sockets = sockets;
 
-    socket.on('message', this.messageListener);
-    socket.on('error', this.errorListener);
-    socket.on('close', this.closeListener);
+    sockets.forEach((socket) => {
+      socket.on('message', this.messageListener(socket));
+      socket.on('close', this.closeListener(socket));
+    });
 
     return this;
   }
 
-  bind(port) {
-    if (this.socket) {
-      this.socket.close();
+  async bind(port) {
+    if (this.sockets.length) {
+      this.sockets.forEach(socket => socket.close());
     }
-    if (this.reject) {
-      this.reject(new Error('Socket closed'));
-    }
-    return new Promise((resolve, reject) => {
-      this.reject = reject;
-      this.setSocket(dgram.createSocket(Object.assign({ type: 'udp4' }, this.options || {})));
-      this.socket.bind(port, () => this.listeningListener(resolve, reject));
-    });
+    return Promise.all(INTERFACESv4.map(netIf => new Promise((resolve, reject) => {
+      const socket = dgram.createSocket(Object.assign({ type: 'udp4' }, this.options || {}));
+      socket.on('error', this.errorListener(socket, reject));
+      socket.bind(port, netIf.address, () => this.listeningListener(socket, resolve));
+    })))
+      .then(sockets => this.setSockets(sockets));
   }
 
-  messageListener(msg, rinfo) {
-    logger.log(TAG, 'Message received', msg, rinfo);
-    if (this.onMessage) {
-      this.onMessage(msg, rinfo);
-    }
+  send(msg, offset, length, port, address) {
+    this.sockets.forEach(socket => socket.send(msg, offset, length, port, address));
   }
 
-  errorListener(error) {
-    logger.error(TAG, error);
-    this.socket.close();
-    if (this.onError) {
-      this.onError(error);
-    }
-
-    if (this.reject) {
-      this.reject(error);
-      this.reject = null;
-    }
+  messageListener(socket) {
+    return (msg, rinfo) => {
+      logger.log(TAG, 'Message received', msg, rinfo);
+      if (this.onMessage) {
+        this.onMessage(msg, rinfo);
+      }
+    };
   }
 
-  listeningListener(resolve) {
+  errorListener(socket, reject) {
+    return (error) => {
+      logger.error(TAG, error);
+      socket.close();
+      if (this.onError) {
+        this.onError(error);
+      }
+
+      if (reject) {
+        reject(error);
+      }
+    };
+  }
+
+  listeningListener(socket, resolve) {
     logger.log(TAG, 'Socket listening');
-    this.socket.setBroadcast(true);
+    socket.setBroadcast(true);
     if (this.onListening) {
       this.onListening();
     }
     if (resolve) {
-      resolve(this);
+      resolve(socket);
     }
   }
 
-  closeListener() {
-    logger.log(TAG, 'Socket closed');
-    if (this.onClose) {
-      this.onClose();
-    }
+  closeListener(socket) {
+    return () => {
+      logger.log(TAG, 'Socket closed');
+      if (this.onClose) {
+        this.onClose();
+      }
+    };
   }
 }
 

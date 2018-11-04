@@ -57,10 +57,10 @@ lwm2m.bsServerListen(ports.bsPort);
 udp.bind()
   .then((udpServer) => {
     setTimeout(() => {
-      udpServer.socket.send('EP:jsembedded2222\0', 0, 'EP:jsembedded422\0'.length, ports.discoveryPort, '255.255.255.255');
-      udpServer.socket.send(`URI:coap://${config.EXTERNAL_IP}:${ports.bsPort}\0`, 0, `URI:coap://${config.EXTERNAL_IP}:${ports.bsPort}\0`.length, ports.discoveryPort, '255.255.255.255');
+      udpServer.send('EP:jsembedded2222\0', 0, 'EP:jsembedded422\0'.length, ports.discoveryPort, '255.255.255.255');
+      udpServer.send(`URI:coap://${config.EXTERNAL_IP}:${ports.bsPort}\0`, 0, `URI:coap://${config.EXTERNAL_IP}:${ports.bsPort}\0`.length, ports.discoveryPort, '255.255.255.255');
     }, 5000);
     setInterval(() => {
-      udpServer.socket.send('', 0, 0, ports.discoveryPort, '255.255.255.255');
+      udpServer.send('', 0, 0, ports.discoveryPort, '255.255.255.255');
     }, 5000);
   });

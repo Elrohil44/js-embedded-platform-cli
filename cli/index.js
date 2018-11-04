@@ -5,6 +5,7 @@ const project = require('./package');
 
 const SUPPORTED_PLATFORMS = [
   'nucleo-f429zi',
+  'unix',
 ];
 
 const DOWNLOAD_COMMAND = 'download';
