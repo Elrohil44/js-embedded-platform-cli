@@ -64,6 +64,11 @@ class UDPSocket {
     this.sockets.forEach(socket => socket.send(msg, offset, length, port, address));
   }
 
+  sendCoapUri(bsPort, port, address) {
+    this.sockets.forEach(socket => socket
+      .send(`URI:coap://${socket.address().address}:${bsPort}\0`, 0, `URI:coap://${socket.address().address}:${bsPort}\0`.length, port, address));
+  }
+
   messageListener(socket) {
     return (msg, rinfo) => {
       logger.log(TAG, 'Message received', msg, rinfo);
