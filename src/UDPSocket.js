@@ -73,7 +73,7 @@ class UDPSocket {
     return (msg, rinfo) => {
       logger.log(TAG, 'Message received', msg, rinfo);
       if (this.onMessage) {
-        this.onMessage(msg, rinfo);
+        this.onMessage(msg, rinfo, socket);
       }
     };
   }

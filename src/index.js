@@ -2,6 +2,13 @@ const minimist = require('minimist');
 const LwM2MServer = require('./LwM2MServer');
 const UDPSocket = require('./UDPSocket');
 const WebSocketServer = require('./WebSocketServer');
+const ClientRegistry = require('./ClientRegistry');
+const MessageType = require('./MessageType');
+
+const {
+  getCoapUri, mapLocationsToArray, mapDevices, mapDevice,
+} = require('./utils');
+
 const config = require('./config');
 
 const options = minimist(process.argv.slice(2));
@@ -19,6 +26,7 @@ function printUsage() {
     `    -p, --port [NUMBER]          \tdefine port for server (default: ${config.LWM2M_LOCAL_PORT})`,
     `    -d, --discoveryPort [NUMBER] \tdefine port used by devices for discovery (default: ${config.LWM2M_DEVICE_DISCOVERY_PORT})`,
     `    -s, --socketFile [SOCKET_FILE]\tdefine socket file used to communicate with web socket (default: ${config.SOCKET_FILE})`,
+    `    -w, --websocketPort [SOCKET_FILE]\tdefine socket port used to communicate with web socket (default: ${config.SOCKET_PORT})`,
     '',
   ].join('\n'));
 }
@@ -35,31 +43,176 @@ const ports = {
 };
 
 const socketFile = options.socketFile || options.s || config.SOCKET_FILE;
+const socketPort = options.websocketPort || options.w || config.SOCKET_PORT;
+
+const deviceLocations = {};
+const deviceLocationsSubscribers = new Set();
+
+setInterval(() => {
+  const locations = mapLocationsToArray(deviceLocations);
+  deviceLocationsSubscribers.forEach((client) => {
+    client.send(JSON.stringify({
+      type: MessageType.DEVICE_LOCATIONS,
+      deviceLocations: locations,
+    }));
+  });
+  Object.keys(deviceLocations).forEach((key) => {
+    deviceLocations[key].healthy += 1;
+  });
+}, 5000);
+
+const deviceRegistry = new ClientRegistry();
+const devicesSubscribers = new Set();
+
+setInterval(() => {
+  const devices = mapDevices(deviceRegistry.clients);
+  devicesSubscribers.forEach((client) => {
+    client.send(JSON.stringify({
+      type: MessageType.DEVICE_LIST,
+      devices,
+    }));
+  });
+}, 5000);
+
+function connectDevice({ port, ip, endpoint }, onError) {
+  if (!port || !ip || !endpoint) {
+    onError({
+      type: MessageType.ERROR,
+      message: 'Missing parameters to request device to connect',
+    });
+  }
+
+  const deviceLocation = deviceLocations[`${ip}:${port}`];
+  if (!deviceLocation) {
+    onError({
+      type: MessageType.ERROR,
+      message: 'Unable to connect: Cannot find device location in database',
+    });
+  }
+
+  const coapUri = getCoapUri(deviceLocation.socket, ports.bsPort);
+  const epMsg = `EP:${endpoint}`;
+
+  deviceLocation.socket.send(epMsg, 0, epMsg.length, port, ip);
+  deviceLocation.socket.send(coapUri, 0, coapUri.length, port, ip);
+}
 
 const lwm2m = LwM2MServer.createServer({
   onError(error) {
     console.error(error);
     process.exit(1);
   },
+  onRegister(params) {
+    const regExp = new RegExp(/(?:<((?:\/[0-9])+)>)/g);
+    const objects = {};
+    const instances = [];
+    let match = regExp.exec(params.payload);
+    while (match) {
+      instances.push(match[1]);
+      match = regExp.exec(params.payload);
+    }
+    instances
+      .map(instance => instance.split('/').filter(Boolean))
+      .forEach(([objectId, instanceId]) => {
+        const objectInstances = objects[objectId] || [];
+        objectInstances.push(instanceId);
+        objects[objectId] = objectInstances;
+      });
+    deviceRegistry.find(params.ep)
+      .then(({ location }) => deviceRegistry.update(location, { objects }))
+      .catch(console.error);
+  },
+  registry: deviceRegistry,
 });
 const udp = UDPSocket.createSocket({
   onError(error) {
     console.error(error);
     process.exit(1);
   },
+  onMessage(data, rinfo, socket) {
+    deviceLocations[`${rinfo.address}:${rinfo.port}`] = {
+      socket,
+      ip: rinfo.address,
+      port: rinfo.port,
+      healthy: 0,
+    };
+  },
 });
 
-const webSocketServer = WebSocketServer.createServer();
-webSocketServer.listen(socketFile);
+const webSocketServer = WebSocketServer.createServer({
+  onConnection(ws) {
+    ws.on('message', (msg) => {
+      let payload;
+      try {
+        payload = JSON.parse(msg);
+      } catch (error) {
+        ws.send(JSON.stringify({
+          type: MessageType.ERROR,
+          message: error.message,
+        }));
+        return;
+      }
+
+      switch (payload.type) {
+        case MessageType.SUB_DEVICE_LOCATIONS:
+          ws.send(JSON.stringify({
+            type: MessageType.DEVICE_LOCATIONS,
+            deviceLocations: mapLocationsToArray(deviceLocations),
+          }));
+          if (!deviceLocationsSubscribers.has(ws)) {
+            ws.on('close', () => deviceLocationsSubscribers.delete(ws));
+            deviceLocationsSubscribers.add(ws);
+          }
+          break;
+        case MessageType.UNSUB_DEVICE_LOCATIONS:
+          deviceLocationsSubscribers.delete(ws);
+          break;
+        case MessageType.CONNECT_DEVICE:
+          connectDevice(payload, (err) => {
+            ws.send(JSON.stringify(err));
+          });
+          break;
+        case MessageType.SUB_DEVICE_LIST:
+          ws.send(JSON.stringify({
+            type: MessageType.DEVICE_LIST,
+            devices: mapDevices(deviceRegistry.clients),
+          }));
+          if (!devicesSubscribers.has(ws)) {
+            ws.on('close', () => devicesSubscribers.delete(ws));
+            devicesSubscribers.add(ws);
+          }
+          break;
+        case MessageType.GET_DEVICE:
+          deviceRegistry.find(payload.endpoint)
+            .then((client) => {
+              ws.send(JSON.stringify({
+                type: MessageType.DEVICE,
+                device: mapDevice(client),
+              }));
+            })
+            .catch((err) => {
+              ws.send(JSON.stringify({
+                type: MessageType.ERROR,
+                message: `Device not found: ${payload.endpoint}: ${err.message}`,
+              }));
+            });
+          break;
+        case MessageType.NOOP:
+          break;
+        default:
+          ws.send(JSON.stringify({
+            type: MessageType.UNSUPPORTED_TYPE,
+          }));
+      }
+    });
+  },
+});
+webSocketServer.listen({ path: socketFile, port: socketPort });
 
 lwm2m.serverListen(ports.port);
 lwm2m.bsServerListen(ports.bsPort);
 udp.bind()
   .then((udpServer) => {
-    setTimeout(() => {
-      udpServer.send('EP:jsembedded2222\0', 0, 'EP:jsembedded422\0'.length, ports.discoveryPort, '255.255.255.255');
-      udpServer.sendCoapUri(ports.bsPort, ports.discoveryPort, '255.255.255.255');
-    }, 5000);
     setInterval(() => {
       udpServer.send('', 0, 0, ports.discoveryPort, '255.255.255.255');
     }, 5000);

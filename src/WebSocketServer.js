@@ -28,6 +28,8 @@ function preListen(socketFile) {
 
 class WebSocketServer {
   constructor(options) {
+    this.wssUnix = null;
+    this.serverUnix = null;
     this.wss = null;
     this.server = null;
 
@@ -43,17 +45,20 @@ class WebSocketServer {
   static createServer(options = {}) {
     const wss = new WebSocketServer(options);
     wss.server = http.createServer();
-    wss.wss = new webSocketServer.Server({ server: wss.server });
+    wss.wss = new webSocketServer.Server({ server: wss.server, clientTracking: true });
+    wss.serverUnix = http.createServer();
+    wss.wssUnix = new webSocketServer.Server({ server: wss.serverUnix, clientTracking: true });
 
     wss.wss.on('connection', wss.connectionListener);
+    wss.wssUnix.on('connection', wss.connectionListener);
     return wss;
   }
 
-  listen(path = config.SOCKET_FILE) {
+  listen({ path = config.SOCKET_FILE, port = config.SOCKET_PORT }) {
     if (this.server.listening) return;
     preListen(path);
 
-    this.server.listen({ path }, () => {
+    this.server.listen({ port }, () => {
       if (this.healthCheckInterval) {
         clearInterval(this.healthCheckInterval);
       }
@@ -64,7 +69,21 @@ class WebSocketServer {
           Object.assign(ws, { isAlive: false });
           return ws.ping(noop);
         });
-      }, 30000);
+      }, 15000);
+    });
+
+    this.serverUnix.listen({ path }, () => {
+      if (this.healthCheckIntervalUnix) {
+        clearInterval(this.healthCheckIntervalUnix);
+      }
+      this.healthCheckIntervalUnix = setInterval(() => {
+        this.wssUnix.clients.forEach((ws) => {
+          if (ws.isAlive === false) return ws.terminate();
+
+          Object.assign(ws, { isAlive: false });
+          return ws.ping(noop);
+        });
+      }, 15000);
     });
   }
 

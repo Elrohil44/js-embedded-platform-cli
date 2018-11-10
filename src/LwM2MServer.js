@@ -1,4 +1,5 @@
 const LwM2M = require('lwm2m');
+const Registry = require('./ClientRegistry');
 const config = require('./config');
 const logger = require('./logger');
 
@@ -32,7 +33,7 @@ class LwM2MServer {
 
   static createServer(options = {}) {
     const server = new LwM2MServer(options);
-    const registry = new LwM2M.Registry();
+    const registry = options.registry || new Registry();
     const lwm2m = LwM2M.createServer(Object.assign({
       type: 'udp4',
       registry,
@@ -111,26 +112,6 @@ class LwM2MServer {
     logger.log(TAG, 'Register request', params);
     accept();
     setImmediate(() => {
-      this.server.read(params.ep, '/3/0')
-        .then((device) => {
-          console.log(JSON.stringify(device, null, 4));
-        })
-        .catch(console.log);
-      this.server.discover(params.ep, '/1/0')
-        .then((device) => {
-          console.log(JSON.stringify(device, null, 4));
-        })
-        .catch(console.log);
-      this.server.discover(params.ep, '/3/0')
-        .then((device) => {
-          console.log(JSON.stringify(device, null, 4));
-        })
-        .catch(console.log);
-      this.server.discover(params.ep, '/5/0')
-        .then((device) => {
-          console.log(JSON.stringify(device, null, 4));
-        })
-        .catch(console.log);
       if (typeof this.onRegister === 'function') {
         this.onRegister(params);
       }
