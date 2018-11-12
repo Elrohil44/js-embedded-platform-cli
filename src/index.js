@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const minimist = require('minimist');
 const LwM2MServer = require('./LwM2MServer');
 const UDPSocket = require('./UDPSocket');

@@ -37,6 +37,10 @@ class FirmwareUploader {
     console.log('Client connected!');
     utils.openFileReadOnly(this.path)
       .then(fd => Promise.all([fd, utils.fstat(fd)]))
+      .catch((err) => {
+        console.error(err);
+        throw err;
+      })
       .then(([fd, stat]) => this._processFile(fd,
         socket, CHUNK_MULTIPLIER * Math.ceil(stat.size / CHUNK_MULTIPLIER)))
       .catch(() => socket.destroy());
