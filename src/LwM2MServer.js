@@ -1,4 +1,9 @@
 const LwM2M = require('lwm2m');
+
+LwM2M.schemas[1] = LwM2M.Schema(require('./models/server.json'));
+LwM2M.schemas[3] = LwM2M.Schema(require('./models/device.json'));
+LwM2M.schemas[5] = LwM2M.Schema(require('./models/firmware_update.json'));
+
 const Registry = require('./ClientRegistry');
 const config = require('./config');
 const logger = require('./logger');
@@ -94,11 +99,11 @@ class LwM2MServer {
       }, { format: 'json' })
         .then(console.log)
         .then(() => this.bsServer.write(params.ep, '/1/1/0', {
-          serverId: 1,
-          lifetime: 30,
-          notifStoring: false,
-          binding: 'U',
-        }, { format: 'json' }))
+          0: 1,
+          1: 30,
+          6: false,
+          7: 'U',
+        }, { format: 'tlv' }))
         .then(() => this.bsServer.finish(params.ep))
         .then(console.log)
         .catch(console.log);
@@ -137,6 +142,18 @@ class LwM2MServer {
     if (typeof this.onError === 'function') {
       this.onError(error);
     }
+  }
+
+  async read(endpoint, resources, options) {
+    return this.server.read(endpoint, resources, options);
+  }
+
+  async execute(endpoint, resources, value) {
+    return this.server.execute(endpoint, resources, value);
+  }
+
+  async write(endpoint, resources, value, options) {
+    return this.server.write(endpoint, resources, value, options);
   }
 }
 

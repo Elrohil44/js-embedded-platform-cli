@@ -9,8 +9,10 @@ module.exports = {
   LWM2M_DEVICE_DISCOVERY_PORT: process.env.LWM2M_DEVICE_DISCOVERY_PORT || 56840,
   LWM2M_LOCAL_PORT: process.env.LWM2M_LOCAL_PORT || 5683,
   LWM2M_BOOTSTRAP_LOCAL_PORT: process.env.LWM2M_BOOTSTRAP_LOCAL_PORT || 5685,
+  UPLOAD_PORT: process.env.UPLOAD_PORT || 10001,
   SOCKET_FILE: process.env.SOCKET_FILE || '/tmp/js-embedded-websocket',
   SOCKET_PORT: process.env.SOCKET_PORT || 60606,
+  FILE_PATH: process.env.FILE_PATH || './src/app/index.js',
   DEBUG: process.env.NODE_ENV !== 'production',
   EXTERNAL_IP,
 };

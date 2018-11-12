@@ -786,14 +786,13 @@ lru-cache@^4.0.0:
     pseudomap "^1.0.2"
     yallist "^2.1.2"
 
-lwm2m@^0.12.0:
+lwm2m@Elrohil44/node-lwm2m:
   version "0.12.0"
-  resolved "https://registry.yarnpkg.com/lwm2m/-/lwm2m-0.12.0.tgz#ac9e1d1dad10023c8bd7b87b6413e9c4c048884f"
-  integrity sha512-jWIRV3rOoaoY0WoyrsHilSHPS2hczKR7vuqXorXPWRrc4Ssep/6c5Sx0F1FHVVL7EstBsX6SVZuDpEXxMpbcqQ==
+  resolved "https://codeload.github.com/Elrohil44/node-lwm2m/tar.gz/ba39888a8c4d188c121328d6af212fe3fa9a5a1b"
   dependencies:
     coap "^0.21.0"
     debug "^2.6.6"
-    readable-stream "^2.2.11"
+    readable-stream "^2.3.6"
 
 mimic-fn@^1.0.0:
   version "1.2.0"
@@ -1056,7 +1055,7 @@ read-pkg@^2.0.0:
     normalize-package-data "^2.3.2"
     path-type "^2.0.0"
 
-readable-stream@^2.2.11, readable-stream@^2.2.2, readable-stream@^2.3.5:
+readable-stream@^2.2.2, readable-stream@^2.3.5, readable-stream@^2.3.6:
   version "2.3.6"
   resolved "http://registry.npmjs.org/readable-stream/-/readable-stream-2.3.6.tgz#b11c27d88b8ff1fbe070643cf94b0c79ae1b0aaf"
   integrity sha512-tQtKA9WIAhBF3+VLAseyMqZeBjW0AHJoxOtYqSUZNJxauErmLbVm2FW1y+J/YA9dUrAC39ITejlZWhVIwawkKw==

@@ -3,6 +3,7 @@ const LwM2MServer = require('./LwM2MServer');
 const UDPSocket = require('./UDPSocket');
 const WebSocketServer = require('./WebSocketServer');
 const ClientRegistry = require('./ClientRegistry');
+const FirmwareUploader = require('./FirmwareUploader');
 const MessageType = require('./MessageType');
 
 const {
@@ -27,6 +28,8 @@ function printUsage() {
     `    -d, --discoveryPort [NUMBER] \tdefine port used by devices for discovery (default: ${config.LWM2M_DEVICE_DISCOVERY_PORT})`,
     `    -s, --socketFile [SOCKET_FILE]\tdefine socket file used to communicate with web socket (default: ${config.SOCKET_FILE})`,
     `    -w, --websocketPort [SOCKET_FILE]\tdefine socket port used to communicate with web socket (default: ${config.SOCKET_PORT})`,
+    `    -u, --uploadPort [NUMBER]\tdefine port used to transfer code to the device (default: ${config.UPLOAD_PORT})`,
+    `    -f, --sourceFile [PATH]\tdefine source file which will be uploaded to device (default: ${config.FILE_PATH})`,
     '',
   ].join('\n'));
 }
@@ -40,10 +43,12 @@ const ports = {
   bsPort: options.bootstrapPort || options.b || config.LWM2M_BOOTSTRAP_LOCAL_PORT,
   port: options.port || options.p || config.LWM2M_LOCAL_PORT,
   discoveryPort: options.discoveryPort || options.d || config.LWM2M_DEVICE_DISCOVERY_PORT,
+  uploadPort: options.uploadPort || options.u || config.UPLOAD_PORT,
 };
 
 const socketFile = options.socketFile || options.s || config.SOCKET_FILE;
 const socketPort = options.websocketPort || options.w || config.SOCKET_PORT;
+const sourceFile = options.sourceFile || options.f || config.FILE_PATH;
 
 const deviceLocations = {};
 const deviceLocationsSubscribers = new Set();
@@ -139,6 +144,7 @@ const udp = UDPSocket.createSocket({
   },
 });
 
+const firmwareUploader = FirmwareUploader.create(sourceFile);
 const webSocketServer = WebSocketServer.createServer({
   onConnection(ws) {
     ws.on('message', (msg) => {
@@ -197,6 +203,52 @@ const webSocketServer = WebSocketServer.createServer({
               }));
             });
           break;
+        case MessageType.READ:
+          lwm2m.read(payload.endpoint, payload.resource)
+            .then(res => ws.send(JSON.stringify({
+              type: MessageType.READ_RESPONSE,
+              endpoint: payload.endpoint,
+              resource: payload.resource,
+              data: res,
+            })))
+            .catch((err) => {
+              ws.send(JSON.stringify({
+                type: MessageType.READ_ERROR,
+                endpoint: payload.endpoint,
+                resource: payload.resource,
+                message: err.message || 'Client Error',
+                error: err.name,
+              }));
+            });
+          break;
+        case MessageType.RESTART:
+          lwm2m.execute(payload.endpoint, '/3/0/4')
+            .then(console.log)
+            .catch(err => ws.send(JSON.stringify({
+              type: MessageType.ERROR,
+              endpoint: payload.endpoint,
+              error: err.name,
+              message: err.message || 'Client Error',
+            })));
+          break;
+        case MessageType.UPDATE_FIRMWARE:
+          deviceRegistry.find(payload.endpoint)
+            .then((client) => {
+              const location = Object.keys(deviceLocations)
+                .map(key => deviceLocations[key])
+                .find(({ ip }) => ip === client.address);
+              if (!location) {
+                throw new Error('Cannot establish connection');
+              }
+              lwm2m.write(payload.endpoint, '/5/0/1', `firm://${location.socket.address().address}:${ports.uploadPort}`);
+            })
+            .catch(err => ws.send(JSON.stringify({
+              type: MessageType.ERROR,
+              endpoint: payload.endpoint,
+              error: err.name,
+              message: err.message || 'Client Error',
+            })));
+          break;
         case MessageType.NOOP:
           break;
         default:
@@ -207,7 +259,8 @@ const webSocketServer = WebSocketServer.createServer({
     });
   },
 });
-webSocketServer.listen({ path: socketFile, port: socketPort });
+
+firmwareUploader.listen(ports.uploadPort);
 
 lwm2m.serverListen(ports.port);
 lwm2m.bsServerListen(ports.bsPort);
@@ -217,3 +270,4 @@ udp.bind()
       udpServer.send('', 0, 0, ports.discoveryPort, '255.255.255.255');
     }, 5000);
   });
+webSocketServer.listen({ path: socketFile, port: socketPort });
