@@ -242,7 +242,7 @@ const webSocketServer = WebSocketServer.createServer({
               if (!location) {
                 throw new Error('Cannot establish connection');
               }
-              lwm2m.write(payload.endpoint, '/5/0/1', `firm://${location.socket.address().address}:${ports.uploadPort}`);
+              return lwm2m.write(payload.endpoint, '/5/0/1', `firm://${location.socket.address().address}:${ports.uploadPort}`);
             })
             .catch(err => ws.send(JSON.stringify({
               type: MessageType.ERROR,
