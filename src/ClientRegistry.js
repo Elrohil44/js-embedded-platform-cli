@@ -24,7 +24,6 @@ class ClientRegistry extends Registry {
       return;
     }
     callback(null, Object.assign({}, client));
-    console.log(client);
   }
 
   _save(params, callback) {
@@ -45,7 +44,6 @@ class ClientRegistry extends Registry {
   _update(location, params, callback) {
     this.get(location)
       .then((res) => {
-        console.log(res);
         const client = Object.assign(res, params, {
           expires: new Date(Date.now() + (params.lt || res.lt) * 1e3),
           updatedAt: new Date(),

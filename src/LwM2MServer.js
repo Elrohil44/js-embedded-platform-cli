@@ -80,7 +80,6 @@ class LwM2MServer {
 
   bsServerListen(bsPort = config.LWM2M_BOOTSTRAP_LOCAL_PORT) {
     this.bsServer.close();
-    this.bsPort = bsPort;
     this.bsServer.listen(bsPort);
     return this;
   }
@@ -97,7 +96,6 @@ class LwM2MServer {
         serverId: 1,
         secretKey: Buffer.from([]),
       }, { format: 'json' })
-        .then(console.log)
         .then(() => this.bsServer.write(params.ep, '/1/1/0', {
           0: 1,
           1: 30,
@@ -105,7 +103,6 @@ class LwM2MServer {
           7: 'U',
         }, { format: 'tlv' }))
         .then(() => this.bsServer.finish(params.ep))
-        .then(console.log)
         .catch(console.log);
       if (typeof this.onBootstrapRequest === 'function') {
         this.onBootstrapRequest(params);

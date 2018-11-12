@@ -43,7 +43,10 @@ class FirmwareUploader {
       })
       .then(([fd, stat]) => this._processFile(fd,
         socket, CHUNK_MULTIPLIER * Math.ceil(stat.size / CHUNK_MULTIPLIER)))
-      .catch(() => socket.destroy());
+      .catch((err) => {
+        console.log(err);
+        socket.destroy();
+      });
   }
 
   async _processFile(fd, socket, fileBytesAligned) {

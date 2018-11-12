@@ -13,6 +13,7 @@ const {
 } = require('./utils');
 
 const config = require('./config');
+const logger = require('./logger');
 
 const options = minimist(process.argv.slice(2));
 
@@ -225,7 +226,7 @@ const webSocketServer = WebSocketServer.createServer({
           break;
         case MessageType.RESTART:
           lwm2m.execute(payload.endpoint, '/3/0/4')
-            .then(console.log)
+            .then(logger.log)
             .catch(err => ws.send(JSON.stringify({
               type: MessageType.ERROR,
               endpoint: payload.endpoint,
