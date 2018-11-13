@@ -57,7 +57,7 @@ class ClientRegistry extends Registry {
   _delete(location, callback) {
     this.get(location)
       .then((client) => {
-        this.clients = this.clients.filter(c => c.location !== location);
+        this.clients = this.clients.filter(c => c.location !== Number(location));
         callback(null, client);
       })
       .catch(callback);
