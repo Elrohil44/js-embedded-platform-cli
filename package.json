@@ -1,6 +1,6 @@
 {
   "name": "js-embedded-platform-cli",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Command line interface for JS embedded platform",
   "repository": "git@github.com:Elrohil44/js-embedded-platform-cli.git",
   "author": "elrohil <wieslaw.stanek@spinney.io>",
