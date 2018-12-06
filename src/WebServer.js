@@ -1,12 +1,12 @@
 const http = require('http');
+const path = require('path');
 const serveStatic = require('serve-static');
 
 const allowedExt = ['.txt', '.ico', '.png', '.html', '.js', '.ttf', '.svg', '.woff', '.css'];
 
-const serve = serveStatic('dist/js-embedded-platform-web');
+const serve = serveStatic(path.join(__dirname, '../dist/js-embedded-platform-web'));
 
 const server = http.createServer((req, res) => {
-  console.log(req.url);
   if (!allowedExt.find(ext => req.url.includes(ext))) {
     req.url = 'index.html';
   }
