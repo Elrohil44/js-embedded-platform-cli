@@ -8,6 +8,7 @@
   "dependencies": {
     "lwm2m": "Elrohil44/node-lwm2m",
     "minimist": "^1.2.0",
+    "serve-static": "^1.13.2",
     "ws": "^6.1.0"
   },
   "scripts": {

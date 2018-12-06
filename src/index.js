@@ -7,6 +7,7 @@ const WebSocketServer = require('./WebSocketServer');
 const ClientRegistry = require('./ClientRegistry');
 const FirmwareUploader = require('./FirmwareUploader');
 const MessageType = require('./MessageType');
+require('./WebServer');
 
 const {
   getCoapUri, mapLocationsToArray, mapDevices, mapDevice,
